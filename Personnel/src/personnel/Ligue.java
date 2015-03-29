@@ -16,7 +16,7 @@ import java.util.TreeSet;
 public class Ligue implements Serializable, Comparable<Ligue>
 {
 	private static final long serialVersionUID = 1L;
-	private String nom;
+	private String nom, description;
 	private SortedSet<Employe> employes;
 	private Employe administrateur;
 	
@@ -25,9 +25,10 @@ public class Ligue implements Serializable, Comparable<Ligue>
 	 * @param nom le nom de la ligue.
 	 */
 	
-	public Ligue(String nom)
+	public Ligue(String nom, String description)
 	{
 		this.nom = nom;
+		this.description = description;
 		employes = new TreeSet<>();
 		administrateur = GestionPersonnel.getGestionPersonnel().getRoot();
 		GestionPersonnel.getGestionPersonnel().add(this);
@@ -51,6 +52,26 @@ public class Ligue implements Serializable, Comparable<Ligue>
 	public void setNom(String nom)
 	{
 		this.nom = nom;
+	}
+	
+	/**
+	 * Retourne la description de la liguee.
+	 * @return La description de la ligue.
+	 */
+
+	public String getDescription()
+	{
+		return description;
+	}
+
+	/**
+	 * Change la description.
+	 * @param description La nouvelle description de la ligue.
+	 */
+
+	public void setDescription(String description)
+	{
+		this.description = description;
 	}
 
 	/**
@@ -130,6 +151,6 @@ public class Ligue implements Serializable, Comparable<Ligue>
 	@Override
 	public String toString()
 	{
-		return nom;
+		return nom + " " + description + " " + employes.size();
 	}
 }

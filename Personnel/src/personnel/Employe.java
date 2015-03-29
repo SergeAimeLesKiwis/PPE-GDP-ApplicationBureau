@@ -18,11 +18,11 @@ public class Employe implements Serializable, Comparable<Employe>
 	
 	Employe(Ligue ligue, String nom, String prenom, String mail, String password)
 	{
+		this.ligue = ligue;
 		this.nom = nom;
 		this.prenom = prenom;
-		this.password = password;
 		this.mail = mail;
-		this.ligue = ligue;
+		this.password = password;
 	}
 	
 	/**

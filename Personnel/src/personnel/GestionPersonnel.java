@@ -26,7 +26,7 @@ public class GestionPersonnel implements Serializable
 	private static final long serialVersionUID = -105283113987886425L;
 	private static GestionPersonnel gestionPersonnel;
 	private SortedSet<Ligue> ligues;
-	private Employe root = new Employe(null, "root", "", "", "toor");
+	private Employe root = new Employe(null, "Popolov", "Serge", "root@mail.com", "kirikouit");
 	
 	/**
 	 * Retourne l'unique instance de cette classe.
@@ -129,14 +129,24 @@ public class GestionPersonnel implements Serializable
 	{
 		return Collections.unmodifiableSortedSet(ligues);
 	}
-
-	void add(Ligue ligue)
+	
+	/**
+	 * Ajoute une ligue.
+	 * param ligue La ligue a ajoutée.
+	 */
+	
+	public void add(Ligue ligue)
 	{
 		ligues.add(ligue);
 	}
 	
 
-	void remove(Ligue ligue)
+	/**
+	 * Enlève une ligue.
+	 * param ligue La ligue a enlevée.
+	 */
+	
+	public void remove(Ligue ligue)
 	{
 		ligues.remove(ligue);
 	}

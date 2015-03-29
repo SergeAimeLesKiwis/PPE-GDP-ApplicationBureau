@@ -145,7 +145,7 @@ public class PersonnelConsole
 
 	private void ajouterLigue(List<Ligue> ligues)
 	{
-		new Ligue (Util.saisieString("nom : "));		
+		new Ligue (Util.saisieString("nom : "), "");		
 	}
 	
 	private void supprimerLigue(List<Ligue> ligues)
