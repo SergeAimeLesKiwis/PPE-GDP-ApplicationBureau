@@ -130,6 +130,11 @@ public class GestionPersonnel implements Serializable
 		return Collections.unmodifiableSortedSet(ligues);
 	}
 	
+	/**
+	 * Retourne toutes les ligues enregistrées en tableau.
+	 * @return Toutes les ligues enregistrées en tableau.
+	 */
+	
 	public String[][] tabLigues(){
 		String[][] tab = new String[ligues.size()][3];
 		int i = 0;

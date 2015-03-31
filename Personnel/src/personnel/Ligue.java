@@ -108,6 +108,25 @@ public class Ligue implements Serializable, Comparable<Ligue>
 	{
 		return Collections.unmodifiableSortedSet(employes);
 	}
+	
+	/**
+	 * Retourne les employés de la ligue en tableau.
+	 * @return les employés de la ligue dans l'ordre alphabétique en tableau.
+	 */
+	
+	public String[][] tabEmployes(){
+		String[][] tab = new String[employes.size()][3];
+		int i = 0;
+
+		for (Employe item : employes) {
+			tab[i][0] = item.getNom();
+			tab[i][1] = item.getPrenom();
+			tab[i][2] = item.getMail();
+			i++;
+		}
+		
+		return tab;
+	}
 
 	/**
 	 * Ajoute un employé dans la ligue. Cette méthode 

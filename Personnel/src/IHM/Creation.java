@@ -6,10 +6,15 @@ import java.awt.Insets;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPasswordField;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
+import javax.swing.table.DefaultTableCellRenderer;
 
 public class Creation {
 	
@@ -18,7 +23,7 @@ public class Creation {
 	// ITALIC = 2
 	// cumuler = |
 	
-	public static JLabel setLabel(String message,int police, int taille, int x, int y, int l, int h) {
+	public static JLabel setLabel(String message, int police, int taille, int x, int y, int l, int h) {
 		JLabel label = new JLabel(message);
 		label.setFont(new Font("Trebuchet MS", police, taille));
 		label.setBounds(x, y, l, h);
@@ -75,5 +80,46 @@ public class Creation {
 		texteLong.setBounds(x, y, l, h);
 		
 		return texteLong;
+	}
+	
+	public static JCheckBox setCheck(String message, int police, int taille, int x, int y, int l, int h) {
+		JCheckBox check = new JCheckBox(message);
+		check.setFont(new Font("Trebuchet MS", police, taille));
+		check.setBounds(x, y, l, h);
+		
+		return check;
+	}
+	
+	public static JTable setTableau(String[] titres, String[][] donnees, int col1, int col2, int col3) {
+		@SuppressWarnings("serial")
+		JTable tableau = new JTable(donnees,titres) {
+			public boolean isCellEditable(int iRowIndex, int iColumnIndex) {
+				 return false;
+			}
+		};		
+		tableau.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		tableau.getTableHeader().setReorderingAllowed(false);
+		tableau.getTableHeader().setResizingAllowed(false);
+		tableau.getTableHeader().setFont(new Font("Trebuchet MS", Font.BOLD, 12));
+		tableau.setFont(new Font("Trebuchet MS", Font.PLAIN, 12));
+		
+		DefaultTableCellRenderer dtcr = new DefaultTableCellRenderer(); 
+		dtcr.setHorizontalAlignment(JLabel.CENTER);
+
+		for (int i = 0; i < tableau.getColumnCount(); i++)
+			tableau.getColumnModel().getColumn(i).setCellRenderer(dtcr);
+
+		tableau.getColumnModel().getColumn(0).setPreferredWidth(col1);
+		tableau.getColumnModel().getColumn(1).setPreferredWidth(col2);
+		tableau.getColumnModel().getColumn(2).setPreferredWidth(col3);
+		
+		return tableau;
+	}
+	
+	public static JScrollPane setScroll(JTable tableau, int x, int y, int l, int h) {
+		JScrollPane scroll = new JScrollPane(tableau,JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+		scroll.setBounds(x, y, l, h);
+		
+		return scroll;
 	}
 }
