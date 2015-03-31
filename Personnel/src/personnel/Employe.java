@@ -16,7 +16,7 @@ public class Employe implements Serializable, Comparable<Employe>
 	private String nom, prenom, password, mail;
 	private Ligue ligue;
 	
-	Employe(Ligue ligue, String nom, String prenom, String mail, String password)
+	public Employe(Ligue ligue, String nom, String prenom, String mail, String password)
 	{
 		this.ligue = ligue;
 		this.nom = nom;
@@ -166,11 +166,13 @@ public class Employe implements Serializable, Comparable<Employe>
 	@Override
 	public String toString()
 	{
-		String res = nom + " " + prenom + " " + mail + " (";
-		if (estRoot())
-			res += "super-utilisateur";
-		else
-			res += ligue.toString();
-		return res + ")";
+//		String res = nom + " " + prenom + " " + mail + " (";
+//		if (estRoot())
+//			res += "super-utilisateur";
+//		else
+//			res += ligue.toString();
+//		return res + ")";
+		
+		return prenom + " " + nom;
 	}
 }

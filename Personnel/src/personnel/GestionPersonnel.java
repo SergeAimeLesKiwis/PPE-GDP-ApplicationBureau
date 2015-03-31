@@ -130,6 +130,20 @@ public class GestionPersonnel implements Serializable
 		return Collections.unmodifiableSortedSet(ligues);
 	}
 	
+	public String[][] tabLigues(){
+		String[][] tab = new String[ligues.size()][3];
+		int i = 0;
+
+		for (Ligue item : ligues) {
+			tab[i][0] = item.getNom();
+			tab[i][1] = item.getAdministrateur().getPrenom() + " " + item.getAdministrateur().getNom();			
+			tab[i][2] = "" + item.getEmployes().size();
+			i++;
+		}
+		
+		return tab;
+	}
+	
 	/**
 	 * Ajoute une ligue.
 	 * param ligue La ligue a ajoutée.

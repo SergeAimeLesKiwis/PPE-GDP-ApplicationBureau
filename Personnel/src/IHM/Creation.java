@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.Insets;
 
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPasswordField;
@@ -63,5 +64,16 @@ public class Creation {
 		aide.setBounds(x, y, 284, 38);
 		
 		return aide;
+	}
+	
+	public static JTextArea setTexteLong(String message, int x, int y, int l, int h) {
+		JTextArea texteLong = new JTextArea(message);
+		texteLong.setFont(new Font("Trebuchet MS", Font.PLAIN, 12));
+		texteLong.setMargin(new Insets(2, 10, 2, 2));
+		texteLong.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+		texteLong.setLineWrap(true);
+		texteLong.setBounds(x, y, l, h);
+		
+		return texteLong;
 	}
 }
