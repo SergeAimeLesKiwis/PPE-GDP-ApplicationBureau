@@ -1,4 +1,4 @@
-package personnel;
+package metiers;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -9,6 +9,8 @@ import java.io.Serializable;
 import java.util.Collections;
 import java.util.SortedSet;
 import java.util.TreeSet;
+
+import donnees.*;
 
 /**
  * Gestion du personnel. Un seul objet de cette classe existe.
@@ -26,7 +28,6 @@ public class GestionPersonnel implements Serializable
 	private static final long serialVersionUID = -105283113987886425L;
 	private static GestionPersonnel gestionPersonnel;
 	private SortedSet<Ligue> ligues;
-	private Employe root = new Employe(null, "Popolov", "Serge", "root@mail.com", "kirikouit");
 	
 	/**
 	 * Retourne l'unique instance de cette classe.
@@ -76,7 +77,7 @@ public class GestionPersonnel implements Serializable
 	 * @throws SauvegardeImpossible Si le support de sauvegarde est inaccessible.
 	 */
 	
-	public void sauvegarder() throws SauvegardeImpossible
+	public void sauvegarder()
 	{
 		ObjectOutputStream oos = null;
 		try
@@ -87,7 +88,7 @@ public class GestionPersonnel implements Serializable
 		}
 		catch (IOException e)
 		{
-			throw new SauvegardeImpossible();
+			e.printStackTrace();
 		}
 		finally
 		{
@@ -114,10 +115,11 @@ public class GestionPersonnel implements Serializable
 	
 	public Ligue getLigue(Employe administrateur)
 	{
-		if (administrateur.estAdmin(administrateur.getLigue()))
-			return administrateur.getLigue();
-		else
-			return null;
+//		if (administrateur.estAdmin(administrateur.getLigue()))
+//			return administrateur.getLigue();
+//		else
+//			return null;$
+		return null;
 	}
 
 	/**
@@ -136,13 +138,14 @@ public class GestionPersonnel implements Serializable
 	 */
 	
 	public String[][] tabLigues(){
-		String[][] tab = new String[ligues.size()][3];
+		String[][] tab = new String[ligues.size()][4];
 		int i = 0;
 
 		for (Ligue item : ligues) {
-			tab[i][0] = item.getNom();
-			tab[i][1] = item.getAdministrateur().getPrenom() + " " + item.getAdministrateur().getNom();			
-			tab[i][2] = "" + item.getEmployes().size();
+			tab[i][0] = item.getLibelle();
+			tab[i][1] = item.getAdministrateur().getPrenom() + " " + item.getAdministrateur().getNom();	
+			tab[i][2] = "" + item.getSport().getLibelle();
+			tab[i][3] = "" + item.getEmployes().size();
 			i++;
 		}
 		
@@ -178,6 +181,6 @@ public class GestionPersonnel implements Serializable
 	
 	public Employe getRoot()
 	{
-		return root;
+		return BDDEmploye.getRoot();
 	}
 }

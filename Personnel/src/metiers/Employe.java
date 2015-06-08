@@ -1,6 +1,8 @@
-package personnel;
+package metiers;
 
 import java.io.Serializable;
+
+import donnees.*;
 
 /**
  * Employé d'une ligue hébergée par la M2L. Certains peuvent 
@@ -13,40 +15,31 @@ import java.io.Serializable;
 public class Employe implements Serializable, Comparable<Employe>
 {
 	private static final long serialVersionUID = 4795721718037994734L;
+	private int id;
 	private String nom, prenom, password, mail;
 	private Ligue ligue;
 	
-	public Employe(Ligue ligue, String nom, String prenom, String mail, String password)
-	{
-		this.ligue = ligue;
+	public Employe(int id, String nom, String prenom, String mail, String password, Ligue ligue) {
+		this.id = id;
 		this.nom = nom;
 		this.prenom = prenom;
 		this.mail = mail;
 		this.password = password;
+		this.ligue = ligue;
+	}
+	
+	public boolean estAdmin() {
+		return this == BDDLigue.getAdmin(ligue.getId());
 	}
 	
 	/**
-	 * Retourne vrai ssi l'employé est administrateur de la ligue 
-	 * passée en paramètre.
-	 * @return vrai ssi l'employé est administrateur de la ligue 
-	 * passée en paramètre.
-	 * @param ligue la ligue pour laquelle on souhaite vérifier si this 
-	 * est l'admininstrateur.
+	 * Retourne l'id de l'employé.
+	 * @return L'id de l'employé. 
 	 */
 	
-	public boolean estAdmin(Ligue ligue)
+	public int getId()
 	{
-		return ligue.getAdministrateur() == this;
-	}
-	
-	/**
-	 * Retourne vrai ssi l'employé est le root.
-	 * @return vrai ssi l'employé est le root.
-	 */
-	
-	public boolean estRoot()
-	{
-		return GestionPersonnel.getGestionPersonnel().getRoot() == this;
+		return id;
 	}
 	
 	/**
@@ -129,9 +122,9 @@ public class Employe implements Serializable, Comparable<Employe>
 	
 	public void setPassword(String password)
 	{
-		this.password= password;
+		this.password.equals(password);
 	}
-
+	
 	/**
 	 * Retourne la ligue à laquelle l'employé est affecté.
 	 * @return la ligue à laquelle l'employé est affecté.
@@ -148,10 +141,7 @@ public class Employe implements Serializable, Comparable<Employe>
 	
 	public void remove()
 	{
-		if (this != GestionPersonnel.getGestionPersonnel().getRoot())
-			ligue.remove(this);
-		else
-			throw new ImpossibleDeSupprimerRoot();
+
 	}
 
 	@Override
@@ -164,15 +154,14 @@ public class Employe implements Serializable, Comparable<Employe>
 	}
 	
 	@Override
+	public boolean equals(Object o) {
+		Employe employe = (Employe) o;
+		return id == employe.getId();
+	}
+	
+	@Override
 	public String toString()
 	{
-//		String res = nom + " " + prenom + " " + mail + " (";
-//		if (estRoot())
-//			res += "super-utilisateur";
-//		else
-//			res += ligue.toString();
-//		return res + ")";
-		
-		return prenom + " " + nom;
+		return prenom + " " + nom + " (" + mail + ")";
 	}
 }

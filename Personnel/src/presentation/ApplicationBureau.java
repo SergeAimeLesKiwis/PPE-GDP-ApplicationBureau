@@ -1,18 +1,23 @@
-package IHM;
+package presentation;
 
 import javax.swing.*;
+import javax.swing.event.HyperlinkEvent;
+import javax.swing.event.HyperlinkListener;
 
-import personnel.*;
+import metiers.*;
+import donnees.*;
 
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.math.BigInteger;
+import java.net.URI;
 import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.List;
 
 @SuppressWarnings("serial")
 public class ApplicationBureau extends JFrame {
@@ -23,28 +28,21 @@ public class ApplicationBureau extends JFrame {
 
 	/* Différentes étapes de l'application */
 
-	private int mode;
-	final static int CONNEXION = 1;
-	final static int MENU_PRINCIPAL = 2;
-	final static int MODIF_COMPTE = 3;
-	final static int MENU_LIGUES = 4;
-	final static int LISTE_LIGUES = 5;
-	final static int AJOUTER_LIGUE = 6;
-	final static int MODIFIER_LIGUE = 7;
-	final static int GERER_LIGUE = 8;
-	final static int AJOUTER_EMPLOYE = 9;
-	
-	private int indiceLigue, indiceEmploye;
+	private Mode mode;
 
 	/* Éléments des différentes page de l'application */
 
-	private JLabel jlTitre, jlErreur, jlNom, jlPrenom, jlMail, jlMDP, jlNewMDP;
+	private JLabel jlTitre, jlErreur, jlId, jlNom, jlPrenom, jlMail, jlMDP, jlNewMDP;
 	private JTextArea jtAideNom, jtAidePrenom, jtAideMail, jtDescription;
 	private JTextField jtNom, jtPrenom, jtMail;
-	private JPasswordField jpConnexion, jpMDP, jpNewMDP;
+	private JPasswordField jpMDP, jpNewMDP;
 	private JCheckBox jcbCheck;
 	private JButton jbOk, jbAnnuler, jbMenuLigues, jbListeComplete, jbModif, jbAjout, jbSuppr;
 	private JTable jtTableau;
+	private JComboBox<Employe> jcbAdmin;
+	private JComboBox<Sport> jcbSport;
+	
+	private String[] ligneTitre;
 
 	/**
 	 * Crée une application de gestion des ligues.
@@ -61,20 +59,10 @@ public class ApplicationBureau extends JFrame {
 		this.gestionPersonnel = gestionPersonnel;
 
 		setFont(new Font("Trebuchet MS", Font.PLAIN, 14));
-		setBounds(100, 100, 500, 400);
+		setSize(500, 400);
 		setLocationRelativeTo(null);
 		
-		Ligue l = new Ligue("RocknRoll","Oh yeah !");
-		l.addEmploye("Moreira", "Diego", "kikoo@jesuisunnoob.com", "aiiightsussumgl");
-		l.addEmploye("Flégeau", "Yoann", "emo@jaipasdetesticules.net", "jaimelespapillons");
-		l.addEmploye("111", "11", "1", "");
-		l.addEmploye("222", "22", "2", "");
-		l.addEmploye("333", "33", "3", "");
-		l.addEmploye("444", "44", "4", "");
-		gestionPersonnel.add(l);
-		gestionPersonnel.add(new Ligue("ligue test","description de ninja"));
-
-		changeMode(MENU_PRINCIPAL);
+		changeMode(Mode.CONNEXION, 0);
 	}
 
 	/**
@@ -89,8 +77,8 @@ public class ApplicationBureau extends JFrame {
 		jlTitre = Creation.setLabel("Mot de passe super-administrateur", 1, 14, 131, 124, 224, 14);
 		panelConnexion.add(jlTitre);
 
-		jpConnexion = Creation.setPassword(13, 120, 180, 31);
-		panelConnexion.add(jpConnexion);
+		jpMDP = Creation.setPassword(13, 120, 180, 31);
+		panelConnexion.add(jpMDP);
 
 		jcbCheck = Creation.setCheck("Afficher le mot de passe", 0, 10, 140, 220, 141, 27);
 		jcbCheck.addActionListener(getAfficheMDP());
@@ -121,11 +109,11 @@ public class ApplicationBureau extends JFrame {
 		panelMenuPrincipal.add(jlTitre);
 
 		jbModif = Creation.setBouton("Modifier mon compte", 157, 167, 183);
-		jbModif.addActionListener(getChangeMode(MODIF_COMPTE));
+		jbModif.addActionListener(getChangeMode(Mode.MODIFIER_ROOT, 0));
 		panelMenuPrincipal.add(jbModif);
 
 		jbMenuLigues = Creation.setBouton("Gérer les ligues", 170, 230, 157);
-		jbMenuLigues.addActionListener(getChangeMode(MENU_LIGUES));
+		jbMenuLigues.addActionListener(getChangeMode(Mode.MENU_LIGUES, 0));
 		panelMenuPrincipal.add(jbMenuLigues);
 
 		return panelMenuPrincipal;
@@ -137,12 +125,18 @@ public class ApplicationBureau extends JFrame {
 	 * @return Le panel de l'écran de modification des informations.
 	 */
 
-	private JPanel getPanelModifCompte(Employe employe) {
+	private JPanel getPanelModifierCompte(Employe employe) {
 		JPanel panelCompte = new JPanel();
 		panelCompte.setLayout(null);
+				
+		String titre = (mode == Mode.MODIFIER_ROOT) ? "Mon compte" : "Modification d'un employé";
+		int x = (mode == Mode.MODIFIER_ROOT) ? 200 : 170;
 
-		jlTitre = Creation.setLabel("Mon compte", 1, 13, 200, 40, 74, 21);
+		jlTitre = Creation.setLabel(titre, 1, 13, x, 40, 200, 21);
 		panelCompte.add(jlTitre);
+		
+		jlId = Creation.setHidden("" + employe.getId());
+		panelCompte.add(jlId);
 
 		jtAideNom = Creation.setAide("Ne doit contenir que des lettres.", 57, 114);
 		panelCompte.add(jtAideNom);
@@ -190,11 +184,17 @@ public class ApplicationBureau extends JFrame {
 		panelCompte.add(jlErreur);
 
 		jbAnnuler = Creation.setBouton("Annuler", 115, 300, 89);
-		jbAnnuler.addActionListener(getChangeMode(MENU_PRINCIPAL));
+		
+		if (mode == Mode.MODIFIER_ROOT)
+			jbAnnuler.addActionListener(getChangeMode(Mode.MENU_PRINCIPAL, 0));
+		else
+			jbAnnuler.addActionListener(getChangeMode(Mode.GERER_LIGUE, employe.getLigue().getId()));
+		
 		panelCompte.add(jbAnnuler);
 
 		jbOk = Creation.setBouton("Valider", 300, 300, 89);
 		jbOk.addActionListener(getValiderModifCompte());
+			
 		panelCompte.add(jbOk);
 
 		return panelCompte;
@@ -213,60 +213,97 @@ public class ApplicationBureau extends JFrame {
 		panelMenuLigues.add(jlTitre);
 
 		jbListeComplete = Creation.setBouton("Voir la liste complète", 157, 140, 183);
-		jbListeComplete.addActionListener(getChangeMode(LISTE_LIGUES));
+		jbListeComplete.addActionListener(getChangeMode(Mode.LISTE_LIGUES, 0));
 		panelMenuLigues.add(jbListeComplete);
 
 		jbAjout = Creation.setBouton("Ajouter une ligue", 170, 195, 157);
-		jbAjout.addActionListener(getChangeMode(AJOUTER_LIGUE));
+		jbAjout.addActionListener(getChangeMode(Mode.AJOUTER_LIGUE, 0));
 		panelMenuLigues.add(jbAjout);
 		
 		jbAnnuler = Creation.setBouton("Annuler", 200, 250, 89);
-		jbAnnuler.addActionListener(getChangeMode(MENU_PRINCIPAL));
+		jbAnnuler.addActionListener(getChangeMode(Mode.MENU_PRINCIPAL, 0));
 		panelMenuLigues.add(jbAnnuler);
 
 		return panelMenuLigues;
 	}
 	
 	/**
-	 * Retourne la disposition des élément de l'écran de menu d'ajout d'une ligue.
-	 * @return Le panel du menu d'ajout d'une ligue.
+	 * Retourne la disposition des élément de l'écran de modification d'une ligue.
+	 * @param ligue La ligue a créée ou modifiée.
+	 * @return Le panel de l'écran de modification des informations.
 	 */
 
-	private JPanel getPanelAjouterLigue() {
-		JPanel panelAjouterLigue = new JPanel();
-		panelAjouterLigue.setLayout(null);
+	private JPanel getPanelAjoutModifLigue(Ligue ligue) {
+		JPanel panelAjoutModifLigue = new JPanel();
+		panelAjoutModifLigue.setLayout(null);
 
-		jlTitre = Creation.setLabel("Ajout d'une ligue", 1, 14, 190, 40, 120, 14);
-		panelAjouterLigue.add(jlTitre);
-
-		jtAideNom = Creation.setAide("Ne doit contenir que des lettres.", 80, 130);
-		panelAjouterLigue.add(jtAideNom);
+		String titre = (mode == Mode.AJOUTER_LIGUE) ? "Ajout" : "Modification";
+		titre += " d'une ligue";
 		
-		jlNom = Creation.setLabel("Nom *", 1, 12, 145, 110, 58, 21);
+		jlId = Creation.setHidden("" + ligue.getId());
+		panelAjoutModifLigue.add(jlId);
+		
+		jlTitre = Creation.setLabel(titre, 1, 13, 190, 30, 150, 21);
+		panelAjoutModifLigue.add(jlTitre);
+
+		jtAideNom = Creation.setAide("Ne doit contenir que des lettres.", 50, 90);
+		panelAjoutModifLigue.add(jtAideNom);
+		
+		jlNom = Creation.setLabel("Libellé *", 1, 12, 145, 80, 70, 21);
 		jlNom.addMouseListener(getAide(jtAideNom));
-		panelAjouterLigue.add(jlNom);
+		panelAjoutModifLigue.add(jlNom);
 
-		jtNom = Creation.setTexte("", 285, 110);
-		panelAjouterLigue.add(jtNom);
+		jtNom = Creation.setTexte(ligue.getLibelle(), 285, 80);
+		panelAjoutModifLigue.add(jtNom);
 		
-		jlPrenom = Creation.setLabel("Description", 1, 12, 145, 150, 80, 21);
-		panelAjouterLigue.add(jlPrenom);
-
-		jtDescription = Creation.setTexteLong("", 285, 150, 150, 100);
-		panelAjouterLigue.add(jtDescription);
+		jtAidePrenom = Creation.setAide("Détermine le sport de la ligue.", 50, 130);
+		panelAjoutModifLigue.add(jtAidePrenom);
 		
-		jlErreur = Creation.setLabel("", 1, 13, 165, 230, 200, 14);
-		panelAjouterLigue.add(jlErreur);
+		jlPrenom = Creation.setLabel("Sport *", 1, 12, 145, 120, 58, 21);
+		jlPrenom.addMouseListener(getAide(jtAidePrenom));
+		panelAjoutModifLigue.add(jlPrenom);
+		
+		jcbSport = new JComboBox<Sport>();
+		jcbSport.setFont(new Font("Trebuchet MS", Font.PLAIN, 13));
+		jcbSport.setBounds(285, 120, 150, 26);
+		jcbSport.setBackground(new Color(225, 225, 225));
+				
+		for (Sport sport : BDDSport.getAllSports())
+			jcbSport.addItem(sport);
 
-		jbAnnuler = Creation.setBouton("Annuler", 125, 300, 89);
-		jbAnnuler.addActionListener(getChangeMode(MENU_LIGUES));
-		panelAjouterLigue.add(jbAnnuler);
+		if (mode == Mode.MODIFIER_LIGUE)
+			jcbSport.setSelectedItem(ligue.getSport());
 
-		jbOk = Creation.setBouton("Ajouter", 289, 300, 89);
-		jbOk.addActionListener(getValiderAjoutLigue());
-		panelAjouterLigue.add(jbOk);
+		panelAjoutModifLigue.add(jcbSport);
 
-		return panelAjouterLigue;
+		jlMail = Creation.setLabel("Description", 1, 12, 145, 160, 100, 21);
+		panelAjoutModifLigue.add(jlMail);
+
+		jtDescription = Creation.setTexteLong(ligue.getDescription(), 285, 160, 150, 100);
+		panelAjoutModifLigue.add(jtDescription);
+
+		jlErreur = Creation.setLabel("", 1, 12, 190, 270, 224, 14);
+		panelAjoutModifLigue.add(jlErreur);
+
+		jbAnnuler = Creation.setBouton("Annuler", 115, 300, 89);
+		
+		if (mode == Mode.AJOUTER_LIGUE)
+			jbAnnuler.addActionListener(getChangeMode(Mode.MENU_LIGUES, 0));
+		else
+			jbAnnuler.addActionListener(getChangeMode(Mode.LISTE_LIGUES, 0));
+		
+		panelAjoutModifLigue.add(jbAnnuler);
+
+		jbOk = Creation.setBouton("Valider", 300, 300, 89);
+		
+		if (mode == Mode.AJOUTER_LIGUE)
+			jbOk.addActionListener(getValiderAjoutLigue());
+		else
+			jbOk.addActionListener(getValiderModifLigue());
+		
+		panelAjoutModifLigue.add(jbOk);
+
+		return panelAjoutModifLigue;
 	}
 
 	/**
@@ -285,11 +322,11 @@ public class ApplicationBureau extends JFrame {
 		panelListeLiguesVide.add(jlNom);
 
 		jbAnnuler = Creation.setBouton("Annuler", 125, 275, 89);
-		jbAnnuler.addActionListener(getChangeMode(MENU_LIGUES));
+		jbAnnuler.addActionListener(getChangeMode(Mode.MENU_LIGUES, 0));
 		panelListeLiguesVide.add(jbAnnuler);
 
 		jbOk = Creation.setBouton("Ajouter", 289, 275, 89);
-		jbOk.addActionListener(getChangeMode(AJOUTER_LIGUE));
+		jbOk.addActionListener(getChangeMode(Mode.AJOUTER_LIGUE, 0));
 		panelListeLiguesVide.add(jbOk);
 
 		return panelListeLiguesVide;
@@ -303,90 +340,44 @@ public class ApplicationBureau extends JFrame {
 	private JPanel getPanelListeLigues() {
 		JPanel panelListeLigues = new JPanel();
 		panelListeLigues.setLayout(null);
-
-		jlTitre = Creation.setLabel("Liste des ligues", 1, 14, 205, 20, 100, 14);
+		
+		jlTitre = Creation.setLabel("Liste des ligues", 1, 14, 205, 15, 100, 14);
 		panelListeLigues.add(jlTitre);
 
-		String[] ligneTitre = new String[] {"Nom","Administrateur","Effectif"};
-		
-		jtTableau = Creation.setTableau(ligneTitre, gestionPersonnel.tabLigues(), 220, 125, 55);		
-//		jtabLigues.addMouseListener(getAfficherBoutonTable(jbOk, jbAnnuler));
-//		jtabLigues.getSelectionModel().addListSelectionListener(getAfficherBoutonTable(jbOk, jbAnnuler));
+		ligneTitre = new String[] {"ID", "Nom", "Administrateur", "Sport", "Effectif"};
+		jtTableau = Creation.setTableau(ligneTitre, BDDLigue.getAllLigues(), Categorie.LIGUE);
 
-		JScrollPane scroll = Creation.setScroll(jtTableau, 50, 40, 400, 220);
+		JScrollPane scroll = Creation.setScroll(jtTableau, 25, 40, 450, 220);
 		panelListeLigues.add(scroll);
 		
 		jlErreur = Creation.setLabel("", 1, 13, 150, 295, 200, 14);
 		panelListeLigues.add(jlErreur);
 
 		jbAnnuler = Creation.setBouton("Annuler", 200, 333, 89);
-		jbAnnuler.addActionListener(getChangeMode(MENU_LIGUES));
+		jbAnnuler.addActionListener(getChangeMode(Mode.MENU_LIGUES, 0));
 		panelListeLigues.add(jbAnnuler);
 
 		jbModif = Creation.setBouton("Modifier", 35, 325, 100);
 		jbModif.addActionListener(getModifierLigue());
-//		jbModif.setEnabled(false);
 		panelListeLigues.add(jbModif);
 		
 		JButton jbGerer = Creation.setBouton("Gérer", 35, 290, 100);
 		jbGerer.addActionListener(getGererLigue());
-//		jbGerer.setEnabled(false);
 		panelListeLigues.add(jbGerer);
 
 		jbSuppr = Creation.setBouton("Supprimer", 360, 325, 100);
 		jbSuppr.addActionListener(getSupprimerLigue());
-//		jbSuppr.setEnabled(false);
 		panelListeLigues.add(jbSuppr);
 		
 		JButton jbAfficher = Creation.setBouton("Afficher", 360, 290, 100);
 		jbAfficher.addActionListener(getAfficherLigue());
-//		jbAfficher.setEnabled(false);
 		panelListeLigues.add(jbAfficher);
+		
+		JButton export = Creation.setExport();
+		export.addActionListener(getExport(Categorie.LIGUE));
+		panelListeLigues.add(export);
 
 		return panelListeLigues;
-	}
-
-	/**
-	 * Retourne la disposition des élément de l'écran de modification d'une ligue.
-	 * @param ligue La ligue a créée ou modifiée.
-	 * @return Le panel de l'écran de modification des informations.
-	 */
-
-	private JPanel getPanelModifierLigue(Ligue ligue) {
-		JPanel panelModifLigue = new JPanel();
-		panelModifLigue.setLayout(null);
-
-		jlTitre = Creation.setLabel("Modification d'une ligue", 1, 13, 190, 40, 150, 21);
-		panelModifLigue.add(jlTitre);
-
-		jtAideNom = Creation.setAide("Ne doit contenir que des lettres.", 57, 114);
-		panelModifLigue.add(jtAideNom);
-		
-		jlNom = Creation.setLabel("Nom *", 1, 12, 100, 97, 58, 21);
-		jlNom.addMouseListener(getAide(jtAideNom));
-		panelModifLigue.add(jlNom);
-
-		jtNom = Creation.setTexte(ligue.getNom(), 285, 96);
-		panelModifLigue.add(jtNom);
-
-		jlPrenom = Creation.setLabel("Description", 1, 12, 100, 131, 100, 21);
-		panelModifLigue.add(jlPrenom);
-
-		jtDescription = Creation.setTexteLong(ligue.getDescription(), 285, 150, 150, 100);
-		panelModifLigue.add(jtDescription);
-
-		jlErreur = Creation.setLabel("", 1, 12, 190, 265, 224, 14);
-		panelModifLigue.add(jlErreur);
-
-		jbAnnuler = Creation.setBouton("Annuler", 115, 300, 89);
-		jbAnnuler.addActionListener(getChangeMode(LISTE_LIGUES));
-		panelModifLigue.add(jbAnnuler);
-
-		jbOk = Creation.setBouton("Valider", 300, 300, 89);
-		jbOk.addActionListener(getValiderModifLigue());
-		panelModifLigue.add(jbOk);
-
-		return panelModifLigue;
 	}
 	
 	/**
@@ -399,54 +390,66 @@ public class ApplicationBureau extends JFrame {
 		JPanel panelGererLigue = new JPanel();
 		panelGererLigue.setLayout(null);
 
-		jlTitre = Creation.setLabel("Gérer : " + ligue.getNom(), 1, 13, 190, 25, 150, 21);
+		jlTitre = Creation.setLabel("Gérer : " + ligue.getLibelle(), 1, 13, 175, 15, 300, 21);
 		panelGererLigue.add(jlTitre);
+		
+		jlId = Creation.setHidden("" + ligue.getId());
+		panelGererLigue.add(jlId);
 
-		jlNom = Creation.setLabel("Administrateur", 1, 12, 130, 50, 100, 21);
+		jlNom = Creation.setLabel("Administrateur", 1, 12, 60, 50, 100, 21);
 		panelGererLigue.add(jlNom);
-		
-		JComboBox<Employe> jcbAdmin = new JComboBox<Employe>();
-		jcbAdmin.setBounds(250, 50, 130, 26);
-		jcbAdmin.setBackground(new Color(204, 204, 204));
-		
+
+		jcbAdmin = new JComboBox<Employe>();
+		jcbAdmin.setFont(new Font("Trebuchet MS", Font.PLAIN, 13));
+		jcbAdmin.setBounds(175, 50, 265, 27);
+		jcbAdmin.setBackground(new Color(225, 225, 225));
+
 		/* Ajout de la liste des employés */
 
-		if (ligue.getEmployes().size() == 0)
-			jcbAdmin.addItem(gestionPersonnel.getRoot());
-		else 
+		if (ligue.getEmployes().size() > 0) {
 			for (Employe employe : ligue.getEmployes())
 				jcbAdmin.addItem(employe);
+			
+			jcbAdmin.addActionListener(getChangerAdminLigue());
+		} else
+			jcbAdmin.addItem(BDDEmploye.getRoot());
 
 		/* Sélection de l'administrateur */
-		
+
 		jcbAdmin.setSelectedItem(ligue.getAdministrateur());
-		jcbAdmin.addActionListener(getChangerAdminLigue(jcbAdmin));
-		
+
 		panelGererLigue.add(jcbAdmin);
-		
-		String[] ligneTitre = new String[] {"Nom","Prénom", "Mail"};
-		
-		jtTableau = Creation.setTableau(ligneTitre, ligue.tabEmployes(), 120, 120, 160);		
-//		jtTableau.addMouseListener(getAfficherBoutonTable(jbOk, jbAnnuler));
-//		jtTableau.getSelectionModel().addListSelectionListener(getAfficherBoutonTable(jbOk, jbAnnuler));
+
+		ligneTitre = new String[] {"ID", "Nom","Prénom", "Mail"};
+		jtTableau = Creation.setTableau(ligneTitre, ligue.tableauEmployes(), Categorie.EMPLOYE);
 
 		JScrollPane scroll = Creation.setScroll(jtTableau, 50, 90, 400, 200);
 		panelGererLigue.add(scroll);
 
-		jlErreur = Creation.setLabel("", 1, 12, 175, 305, 224, 14);
+		jlErreur = Creation.setLabel("", 1, 12, 145, 325, 224, 14);
 		panelGererLigue.add(jlErreur);
 
-		jbAnnuler = Creation.setBouton("Annuler", 50, 333, 89);
-		jbAnnuler.addActionListener(getChangeMode(LISTE_LIGUES));
+		jbAjout = Creation.setBouton("Ajouter", 50, 300, 89);
+		jbAjout.addActionListener(getChangeMode(Mode.AJOUTER_EMPLOYE, getIdUse()));
+		panelGererLigue.add(jbAjout);
+
+		jbAnnuler = Creation.setBouton("Retour", 50, 333, 89);
+		jbAnnuler.addActionListener(getChangeMode(Mode.LISTE_LIGUES, 0));
 		panelGererLigue.add(jbAnnuler);
 
-		jbAjout = Creation.setBouton("Ajouter", 190, 333, 89);
-		jbAjout.addActionListener(getChangeMode(AJOUTER_EMPLOYE));
-		panelGererLigue.add(jbAjout);
-		
-		jbSuppr = Creation.setBouton("Supprimer", 335, 333, 100);
+		jbModif = Creation.setBouton("Modifier", 350, 300, 100);
+		jbModif.addActionListener(getModifierEmploye());
+		panelGererLigue.add(jbModif);
+
+		jbSuppr = Creation.setBouton("Supprimer", 350, 333, 100);
 		jbSuppr.addActionListener(getSupprimerEmploye());
 		panelGererLigue.add(jbSuppr);
+		
+		if (ligue.getEmployes().size() > 0) {
+			JButton export = Creation.setExport();
+			export.addActionListener(getExport(Categorie.EMPLOYE));
+			panelGererLigue.add(export);
+		}
 
 		return panelGererLigue;
 	}
@@ -457,12 +460,15 @@ public class ApplicationBureau extends JFrame {
 	 * @return Le panel de l'écran de modification des informations.
 	 */
 
-	private JPanel getPanelAjouterEmploye() {
+	private JPanel getPanelAjouterEmploye(Ligue ligue) {
 		JPanel panelAjoutEmploye = new JPanel();
 		panelAjoutEmploye.setLayout(null);
 
-		jlTitre = Creation.setLabel("Ajout d'un employé", 1, 13, 175, 40, 150, 21);
+		jlTitre = Creation.setLabel("Ajout d'un employé à " + ligue.getLibelle(), 1, 13, 150, 40, 300, 21);
 		panelAjoutEmploye.add(jlTitre);
+		
+		jlId = Creation.setHidden("" + ligue.getId());
+		panelAjoutEmploye.add(jlId);
 
 		jtAideNom = Creation.setAide("Ne doit contenir que des lettres.", 57, 114);
 		panelAjoutEmploye.add(jtAideNom);
@@ -493,14 +499,12 @@ public class ApplicationBureau extends JFrame {
 
 		jtMail = Creation.setTexte("", 283, 162);
 		panelAjoutEmploye.add(jtMail);
-
-		List<Ligue> ligues = new ArrayList<>(gestionPersonnel.getLigues());
 		
 		jcbCheck = Creation.setCheck("Devenir administrateur de la ligue", 1, 13, 115, 210, 250, 27);
 		
 		/* Le premier employé ajouté devient administrateur */
 		
-		if (ligues.get(indiceLigue).getEmployes().isEmpty()) {
+		if (ligue.getEmployes().isEmpty()) {
 			jcbCheck.setSelected(true);
 			jcbCheck.setEnabled(false);
 		}
@@ -511,7 +515,7 @@ public class ApplicationBureau extends JFrame {
 		panelAjoutEmploye.add(jlErreur);
 
 		jbAnnuler = Creation.setBouton("Annuler", 115, 300, 89);
-		jbAnnuler.addActionListener(getChangeMode(GERER_LIGUE));
+		jbAnnuler.addActionListener(getChangeMode(Mode.GERER_LIGUE, getIdUse()));
 		panelAjoutEmploye.add(jbAnnuler);
 
 		jbOk = Creation.setBouton("Valider", 300, 300, 89);
@@ -519,6 +523,67 @@ public class ApplicationBureau extends JFrame {
 		panelAjoutEmploye.add(jbOk);
 
 		return panelAjoutEmploye;
+	}
+	
+	private JPanel getPanelAfficherLigue(Ligue ligue) {
+		JPanel panelAfficherLigue = new JPanel();
+		panelAfficherLigue.setLayout(null);
+		
+		String titre = "• La ligue <b>" + ligue.getLibelle() + "</b> de <b>" + ligue.getSport() + "</b> est administrée par :";
+		JEditorPane jepTitre = Creation.setInfos(titre, 40, 10);
+		panelAfficherLigue.add(jepTitre);
+		
+		final String mail = ligue.getAdministrateur().getMail(),
+					prenom = ligue.getAdministrateur().getPrenom(),
+					nom = ligue.getAdministrateur().getNom();
+		String admin = "<b>" + prenom + " " + nom + "</b> " + "(<a href=\"\">" + mail + "</a>)";
+		JEditorPane jepAdmin = Creation.setInfos(admin, 95, 30);
+		jepAdmin.addHyperlinkListener(new HyperlinkListener() {
+			@Override
+		    public void hyperlinkUpdate(HyperlinkEvent e) {
+		        if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+		        	Desktop desktop = Desktop.getDesktop();
+		    		String message = "mailto:" + mail + "?subject=Contact%20M2L";
+		    		URI uri = URI.create(message);
+		    		try {
+		    			desktop.mail(uri);
+		    			System.out.println("ninja");
+		    		} catch (IOException ex) { ex.printStackTrace(); }
+		        }
+		    }
+		});
+		panelAfficherLigue.add(jepAdmin);
+		
+		if (!ligue.getDescription().equals("")) {
+			String description = "• Description : " + ligue.getDescription();
+			JEditorPane jepDescription = Creation.setInfos(description, 40, 55);
+			panelAfficherLigue.add(jepDescription);
+		}
+		
+		if (ligue.getEmployes().size() > 0) {
+			String effectif = "• Elle est composée de " + ligue.getEmployes().size() + " employé";
+			effectif += (ligue.getEmployes().size() > 1) ? "s :" : " :";
+			JEditorPane jepEffectif = Creation.setInfos(effectif, 40, 80);
+			panelAfficherLigue.add(jepEffectif);
+			
+			JList<Employe> liste = new JList<Employe>(ligue.listeEmployes()){
+			    @Override
+			    public void setSelectionInterval(int index0, int index1) {
+			        super.setSelectionInterval(-1, -1);
+			    }
+			};
+			liste.setFont(new Font("Trebuchet MS", Font.PLAIN, 14));
+			liste.setBackground(new Color(238, 238, 238));
+			JScrollPane scroll = Creation.setScroll(liste, 75, 110, 350, 190);
+			scroll.setBorder(BorderFactory.createEmptyBorder());
+			panelAfficherLigue.add(scroll);
+		}
+		
+		jbAnnuler = Creation.setBouton("Retour", 200, 320, 100);
+		jbAnnuler.addActionListener(getChangeMode(Mode.LISTE_LIGUES, 0));
+		panelAfficherLigue.add(jbAnnuler);
+
+		return panelAfficherLigue;
 	}
 	
 	/**
@@ -532,11 +597,11 @@ public class ApplicationBureau extends JFrame {
 
 	/**
 	 * Change le mode et le panel de l'application.
-	 * @param mode Le nouveau mode.
+	 * @param mode Le nouveau 
 	 */
 
-	private void changeMode(int mode) {
-		List<Ligue> ligues = new ArrayList<>(gestionPersonnel.getLigues());
+	private void changeMode(Mode mode, int id) {
+		this.mode = mode;
 		
 		switch (mode) {
 		case CONNEXION:
@@ -547,8 +612,8 @@ public class ApplicationBureau extends JFrame {
 			setContentPane(getPanelMenuPrincipal());
 			break;
 
-		case MODIF_COMPTE:
-			setContentPane(getPanelModifCompte(gestionPersonnel.getRoot()));
+		case MODIFIER_ROOT:
+			setContentPane(getPanelModifierCompte(gestionPersonnel.getRoot()));
 			break;
 			
 		case MENU_LIGUES:
@@ -556,32 +621,51 @@ public class ApplicationBureau extends JFrame {
 			break;
 			
 		case LISTE_LIGUES:
-			if (gestionPersonnel.getLigues().isEmpty())
-				setContentPane(getPanelListeLiguesVide());
-			else
+			if (BDDLigue.getNombreLigues() > 0)
 				setContentPane(getPanelListeLigues());
+			else
+				setContentPane(getPanelListeLiguesVide());
 			break;
 			
 		case AJOUTER_LIGUE:
-			setContentPane(getPanelAjouterLigue());
+			setContentPane(getPanelAjoutModifLigue(new Ligue(0, "", null,  "")));
 			break;
 			
 		case MODIFIER_LIGUE:
-			setContentPane(getPanelModifierLigue(ligues.get(indiceLigue)));
+			setContentPane(getPanelAjoutModifLigue(BDDLigue.getLigueVide(id)));
 			break;
 		
 		case GERER_LIGUE:
-			setContentPane(getPanelGererLigue(ligues.get(indiceLigue)));
+			setContentPane(getPanelGererLigue(BDDLigue.getLigue(id)));
 		break;
 		
 		case AJOUTER_EMPLOYE:
-			setContentPane(getPanelAjouterEmploye());
+			setContentPane(getPanelAjouterEmploye(BDDLigue.getLigue(id)));
 		break;
-	}
-
-		this.mode = mode;
+		
+		case MODIFIER_EMPLOYE:
+			setContentPane(getPanelModifierCompte(BDDEmploye.getEmploye(id)));
+		break;
+		
+		case AFFICHER_LIGUE:
+			setContentPane(getPanelAfficherLigue(BDDLigue.getLigue(id)));
+			break;
+		
+		default:
+			dispose();
+			break;
+		}
+		
 		actualiseFenetre();
 	}
+	
+	/**
+	 * Retourne le mot de passe salté.
+	 * @param mdp Le mot de passe à salter.
+	 * @return Le mot de passe salté.
+	 */
+
+	
 
 	/**
 	 * Retourne si le mot de passe super-administrateur est bon.
@@ -589,11 +673,15 @@ public class ApplicationBureau extends JFrame {
 	 */
 
 	private boolean verifConnexion() {
-		return gestionPersonnel.getRoot().checkPassword(new String(jpConnexion.getPassword()));
+		return gestionPersonnel.getRoot().checkPassword(BDD.getMD5(new String(jpMDP.getPassword())));
+	}
+	
+	private int getIdUse() {
+		return Integer.parseInt(jlId.getText());
 	}
 	
 	/**
-	 * Affichage d'une sauvegarde réussie.
+	 * Affichage du message de succès lors d'une requète réussie.
 	 */
 
 	private void erreurOK(String message) {
@@ -601,9 +689,8 @@ public class ApplicationBureau extends JFrame {
 		jlErreur.setText(message);
 	}
 
-
 	/**
-	 * Affichage d'une sauvegarde ratée.
+	 * Affichage du message d'erreur lors d'une requète ratée.
 	 */
 
 	private void erreurNOK(String message) {
@@ -620,7 +707,8 @@ public class ApplicationBureau extends JFrame {
 	private int verifLettres(JTextField text) {
 		int test = 0;
 		
-		if ((text.getText().equals("")) || !text.getText().matches("[a-zA-Z]*")) {
+		if ((text.getText().equals("")) || !text.getText().matches(
+				"[- a-zA-ZÀÁÂÆÇÈÉÊËÌÍÎÏÑÒÓÔŒÙÚÛÜÝŸàáâæçèéêëìíîïñòóôœùúûüýÿ]*")) {
 			text.setBackground(new Color(205, 92, 92));
 			test++;
 		} else
@@ -638,14 +726,32 @@ public class ApplicationBureau extends JFrame {
 	private int verifMail(JTextField text) {
 		int test = 0;
 		
-		if ((text.equals("")) || !text.getText().matches(
-						"^[_A-Za-z0-9-\\+]+(\\.[_A-Za-z0-9-]+)*@[A-Za-z0-9-]+(\\.[A-Za-z0-9]+)*(\\.[A-Za-z]{2,})$")) {
+		if ((text.getText().equals("")) || !text.getText().matches(
+				"^[_A-Za-z0-9-\\+]+(\\.[_A-Za-z0-9-]+)*@[A-Za-z0-9-]+(\\.[A-Za-z0-9]+)*(\\.[A-Za-z]{2,})$")) {
 			text.setBackground(new Color(205, 92, 92));
 			test++;
 		} else
 			text.setBackground(new Color(255, 255, 255));
 		
 		return test;
+	}
+	
+	/**
+	 * Vérifie l'unicité du mail de l'employé.
+	 * @return Si le mail de l'employé est unique ou non.
+	 */
+
+	private int verifMailExiste() {
+		return (BDDEmploye.verifMailExiste(getIdUse(), jtMail.getText())) ? 1000 : 0;
+	}
+	
+	/**
+	 * Vérifie l'unicité du nom de la ligue.
+	 * @return Si le nom de la ligue est unique ou non.
+	 */
+
+	private int verifLigueExiste() {
+		return (BDDLigue.verifLigueExiste(getIdUse(), jtNom.getText())) ? 1000 : 0;
 	}
 
 	/**
@@ -655,14 +761,17 @@ public class ApplicationBureau extends JFrame {
 
 	private int verifNewMDP() {
 		int test = 0;
-		boolean vide = true;
-
-		if (jpMDP.getPassword().equals("") && !jpNewMDP.getPassword().equals(""))
-			vide = false;
-		else if (jpNewMDP.getPassword().equals("") && !jpMDP.getPassword().equals(""))
-			vide = false;
+		boolean vide = false;
 		
-		if ((!vide) || (!new String(jpMDP.getPassword()).equals(new String(jpNewMDP.getPassword())))) {
+		String MDP = new String(jpMDP.getPassword()),
+				newMDP = new String(jpNewMDP.getPassword());
+
+		if ((MDP.equals("")) && !(newMDP.equals("")))
+			vide = true;
+		else if ((newMDP.equals("")) && !(MDP.equals("")))
+			vide = true;
+		
+		if (vide || !(MDP.equals(newMDP))) {
 			jpMDP.setBackground(new Color(205, 92, 92));
 			jpNewMDP.setBackground(new Color(205, 92, 92));
 			test++;
@@ -675,32 +784,11 @@ public class ApplicationBureau extends JFrame {
 	}
 	
 	/**
-	 * Sauvegarde des nouvelles données du super-administrateur.
-	 */
-
-	private void saveRoot() {
-		gestionPersonnel.getRoot().setNom(jtNom.getText());
-		gestionPersonnel.getRoot().setPrenom(jtPrenom.getText());
-		gestionPersonnel.getRoot().setMail(jtMail.getText());
-		gestionPersonnel.getRoot().setPassword(new String(jpMDP.getPassword()));
-	}
-	
-	/**
-	 * Supprime la ligue sélectionnée dans la liste.
-	 * @param ligues La ligues des ligues.
+	 * Sauvegarde des nouvelles données de l'employé.
 	 */
 	
-	private void supprimerLigue(List<Ligue> ligues) {
-		ligues.get(indiceLigue).remove();
-	}
-	
-	/**
-	 * Supprime la ligue sélectionnée dans la liste.
-	 * @param employes La ligues des ligues.
-	 */
-	
-	private void supprimerEmploye(List<Employe> employes) {
-		employes.get(indiceEmploye).remove();
+	private void save(int id) {
+		BDDEmploye.updateEmploye(id, jtNom.getText(), jtPrenom.getText(), jtMail.getText(),new String(jpMDP.getPassword()));
 	}
 	
 	/**
@@ -708,7 +796,7 @@ public class ApplicationBureau extends JFrame {
 	 * @return Mot de passe.
 	 */
 	
-	private String newMDP() {
+	private String MDPAleatoire() {
 		SecureRandom random = new SecureRandom();
 		return new BigInteger(130, random).toString(32);
 	}
@@ -737,10 +825,10 @@ public class ApplicationBureau extends JFrame {
 	 * @return Nouvel affichage.
 	 */
 
-	private ActionListener getChangeMode(final int mode) {
+	private ActionListener getChangeMode(final Mode mode, final int id) {
 		return new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				changeMode(mode);
+				changeMode(mode, id);
 			}
 		};
 	}
@@ -754,9 +842,9 @@ public class ApplicationBureau extends JFrame {
 		return new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				if (jcbCheck.isSelected())
-					jpConnexion.setEchoChar((char) 0);
+					jpMDP.setEchoChar((char) 0);
 				else
-					jpConnexion.setEchoChar('•');
+					jpMDP.setEchoChar('•');
 			}
 		};
 	}
@@ -769,11 +857,11 @@ public class ApplicationBureau extends JFrame {
 	private ActionListener getVerifConnexion() {
 		return new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				if (verifConnexion()) {
-					changeMode(MENU_PRINCIPAL);
-				} else {
+				if (verifConnexion())
+					changeMode(Mode.MENU_PRINCIPAL, 0);
+				else {
 					jlErreur.setVisible(true);
-					jpConnexion.setText("");
+					jpMDP.setText("");
 				}
 			}
 		};
@@ -800,6 +888,10 @@ public class ApplicationBureau extends JFrame {
 				/* Test d'intégrité du mail */
 				
 				test += verifMail(jtMail);
+				
+				/* Vérification de l'unicité du mail */
+				
+				test += verifMailExiste();
 
 				/* Test d'intégrité des mots de passe */
 				
@@ -808,11 +900,12 @@ public class ApplicationBureau extends JFrame {
 				/* Sauvegarde du résultat, si les tests sont conformes */
 
 				if (test == 0) {
-					erreurOK("Sauvegarde réussie !");
-					if (mode == MODIF_COMPTE)
-						saveRoot();
-				} else
-					erreurNOK("Sauvegarde ratée !");
+					erreurOK("Modification réussie !");
+					save(getIdUse());
+				} else if (test >= 1000)
+					erreurNOK("Mail déjà existant !");
+				else
+					erreurNOK("Modification ratée !");
 
 				/* Réinitialisation des champs de mots de passe */
 				
@@ -831,62 +924,38 @@ public class ApplicationBureau extends JFrame {
 		return new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				int test = 0;
-				
+
 				/* Test d'intégrité du nom */
-				
+
 				test += verifLettres(jtNom);
-				
+
+				/* Vérification de l'unicité du nom */
+
+				test += verifLigueExiste();
+
 				/* Sauvegarde du résultat, si les tests sont conformes */
-				
+
 				if (test == 0) {
+					Ligue ligue = new Ligue(0, jtNom.getText(), (Sport) jcbSport.getSelectedItem(), jtDescription.getText());
+					ligue.insert();
 					erreurOK("Ajout réussi !");
-					jlErreur.setBounds(192, 130, 200, 14);
+					jlErreur.setBounds(200, 130, 200, 14);
 					jbAnnuler.setText("Retour");
 					jbAnnuler.setBounds(200, 230, 84, 27);
 					jlNom.setVisible(false);
 					jtNom.setVisible(false);
 					jlPrenom.setVisible(false);
+					jcbSport.setVisible(false);
+					jlMail.setVisible(false);
 					jtDescription.setVisible(false);
 					jbOk.setVisible(false);
-					gestionPersonnel.add(new Ligue(jtNom.getText(), jtDescription.getText()));
-				} else
-					erreurNOK("Ajout raté !");
+				} else if (test >= 1000)
+					erreurNOK("Nom déjà existant !");
+				else
+					erreurNOK("Nom non conforme !");
 			}
 		};
 	}
-
-	/**
-	 * Retourne la fonction d'affichage des boutons lorsqu'une ligue a été choisie.
-	 * @return Affichage des boutons ou non.
-	 */
-
-//	private ListSelectionListener getAfficherBoutonTable(final JButton jb1, final JButton jb2) {
-//		return new ListSelectionListener() {
-//			@Override
-//			public void valueChanged(ListSelectionEvent e) {
-//				if(!e.getValueIsAdjusting()) {
-//					try {
-//						jb1.setEnabled(jtabLigues.getSelectedRow() > -1);
-//						jb2.setEnabled(jtabLigues.getSelectedRow() > -1);
-//					} catch (Exception e2) {
-//						jbOk.setEnabled(true);
-//					}
-////					actualiseFenetre();
-//				}
-//		    }
-//		};
-//	}
-//
-//	private MouseAdapter getAfficherBoutonTable(final JButton jb1, final JButton jb2) {
-//		return new MouseAdapter() {
-//			@Override
-//			public void mouseClicked(MouseEvent e) {
-//				//jb1.setEnabled(jtabLigues.getSelectedRow() > -1);
-//				//jb2.setEnabled(jtabLigues.getSelectedRow() > -1);
-////				actualiseFenetre();
-//			}
-//		};
-//	}
 	
 	/**
 	 * Retourne la fonction de vérification de modification d'une ligue.
@@ -897,8 +966,8 @@ public class ApplicationBureau extends JFrame {
 		return new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				if (jtTableau.getSelectedRow() > -1) {
-					indiceLigue = jtTableau.getSelectedRow();
-					changeMode(MODIFIER_LIGUE);
+					int id = Integer.parseInt((String) jtTableau.getValueAt(jtTableau.getSelectedRow(), 0));
+					changeMode(Mode.MODIFIER_LIGUE, id);
 				} else
 					erreurNOK("Veuillez sélectionnez une ligue !");
 			}
@@ -914,8 +983,8 @@ public class ApplicationBureau extends JFrame {
 		return new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				if (jtTableau.getSelectedRow() > -1) {
-					indiceLigue = jtTableau.getSelectedRow();
-					changeMode(GERER_LIGUE);
+					int id = Integer.parseInt((String) jtTableau.getValueAt(jtTableau.getSelectedRow(), 0));
+					changeMode(Mode.GERER_LIGUE, id);
 				} else
 					erreurNOK("Veuillez sélectionnez une ligue !");
 			}
@@ -931,14 +1000,14 @@ public class ApplicationBureau extends JFrame {
 		return new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				if (jtTableau.getSelectedRow() > -1) {
-					indiceLigue = jtTableau.getSelectedRow();
+					int id = Integer.parseInt((String) jtTableau.getValueAt(jtTableau.getSelectedRow(), 0));
 					jlErreur.setText("");
-					int n = JOptionPane.showConfirmDialog(
+					int choix = JOptionPane.showConfirmDialog(
 							null, "Êtes-vous sûr(e) de vouloir supprimer la ligue ?", "Vérification", JOptionPane.YES_NO_OPTION);
 					
-					if (n == JOptionPane.YES_OPTION) {
-						supprimerLigue(new ArrayList<>(gestionPersonnel.getLigues()));
-						changeMode(LISTE_LIGUES);
+					if (choix == JOptionPane.YES_OPTION) {
+						BDDLigue.deleteLigue(id);
+						changeMode(Mode.LISTE_LIGUES, 0);
 					}
 				} else
 					erreurNOK("Veuillez sélectionnez une ligue !");
@@ -955,10 +1024,9 @@ public class ApplicationBureau extends JFrame {
 		return new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				if (jtTableau.getSelectedRow() > -1) {
-					indiceLigue = jtTableau.getSelectedRow();
-					System.out.println("afficher");
-				}
-				else
+					int id = Integer.parseInt((String) jtTableau.getValueAt(jtTableau.getSelectedRow(), 0));
+					changeMode(Mode.AFFICHER_LIGUE, id);
+				} else
 					erreurNOK("Veuillez sélectionnez une ligue !");
 			}
 		};
@@ -977,16 +1045,20 @@ public class ApplicationBureau extends JFrame {
 				/* Test d'intégrité du nom */
 				
 				test += verifLettres(jtNom);
+								
+				/* Vérification de l'unicité du nom */
 				
+				test += verifLigueExiste();
+								
 				/* Sauvegarde du résultat, si les tests sont conformes */
 				
 				if (test == 0) {
+					BDDLigue.updateLigue(getIdUse(), jtNom.getText(), jtDescription.getText(), (Sport) jcbSport.getSelectedItem());
 					erreurOK("Modification réussie !");
-					List<Ligue> ligues = new ArrayList<>(gestionPersonnel.getLigues());
-					ligues.get(indiceLigue).setNom(jtNom.getText());
-					ligues.get(indiceLigue).setDescription(jtDescription.getText());
-				} else
-					erreurNOK("Modification ratée !");
+				} else if (test >= 1000)
+					erreurNOK("Nom déjà existant !");
+				else
+				erreurNOK("Nom non conforme !");
 			}
 		};
 	}
@@ -996,15 +1068,14 @@ public class ApplicationBureau extends JFrame {
 	 * @return Changement d'administrateur d'une ligue.
 	 */
 
-	private ActionListener getChangerAdminLigue(final JComboBox<Employe> jcb) {
+	private ActionListener getChangerAdminLigue() {
 		return new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				List<Ligue> ligues = new ArrayList<>(gestionPersonnel.getLigues());
-				ligues.get(indiceLigue).setAdministrateur((Employe) jcb.getSelectedItem());
+				BDDLigue.getLigue(getIdUse()).setAdministrateur((Employe) jcbAdmin.getSelectedItem());
 			}
 		};
 	}
-	
+
 	/**
 	 * Retourne la fonction de vérification de suppresion d'un employé.
 	 * @return Suppression un employé ou non.
@@ -1014,17 +1085,37 @@ public class ApplicationBureau extends JFrame {
 		return new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				if (jtTableau.getSelectedRow() > -1) {
-					indiceEmploye = jtTableau.getSelectedRow();
+					int id = Integer.parseInt((String) jtTableau.getValueAt(jtTableau.getSelectedRow(), 0));
 					jlErreur.setText("");
 					
-					int n = JOptionPane.showConfirmDialog(
+					int choix = JOptionPane.showConfirmDialog(
 							null, "Êtes-vous sûr(e) de vouloir supprimer l'employé ?", "Vérification", JOptionPane.YES_NO_OPTION);
 					
-					if (n == JOptionPane.YES_OPTION) {
-						List<Ligue> ligues = new ArrayList<>(gestionPersonnel.getLigues());
-						supprimerEmploye(new ArrayList<>(ligues.get(indiceLigue).getEmployes()));
-						changeMode(GERER_LIGUE);
+					if (choix == JOptionPane.YES_OPTION) {
+						if (BDDLigue.getAdmin(getIdUse()).getId() != id) {
+							BDDEmploye.deleteEmploye(id);
+							changeMode(Mode.GERER_LIGUE, getIdUse());
+						}
+						else
+							erreurNOK("Veuillez changer l'administrateur !");
 					}
+				} else
+					erreurNOK("Veuillez sélectionnez un employé !");
+			}
+		};
+	}
+	
+	/**
+	 * Retourne la fonction de vérification de suppresion d'un employé.
+	 * @return Suppression un employé ou non.
+	 */
+
+	private ActionListener getModifierEmploye() {
+		return new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				if (jtTableau.getSelectedRow() > -1) {
+					int id = Integer.parseInt((String) jtTableau.getValueAt(jtTableau.getSelectedRow(), 0));
+						changeMode(Mode.MODIFIER_EMPLOYE, id);
 				} else
 					erreurNOK("Veuillez sélectionnez un employé !");
 			}
@@ -1052,24 +1143,87 @@ public class ApplicationBureau extends JFrame {
 				/* Test d'intégrité du mail */
 				
 				test += verifMail(jtMail);
+				
+				/* Vérification de l'unicité du mail */
+				
+				test += verifMailExiste();
 
 				/* Sauvegarde du résultat, si les tests sont conformes */
 
 				if (test == 0) {
-					List<Ligue> ligues = new ArrayList<>(gestionPersonnel.getLigues());
-					
+
 					/* Ajout de l'employé et changement d'administrateur si nécessaire */
 					
+					Ligue ligue = BDDLigue.getLigue(getIdUse());
+					
 					if (jcbCheck.isSelected())
-						ligues.get(indiceLigue).setAdministrateur(ligues.get(indiceLigue).addEmploye(jtNom.getText(), jtPrenom.getText(), jtMail.getText(), newMDP()));
+						ligue.setAdministrateur(ligue.addEmploye(jtNom.getText(), jtPrenom.getText(), jtMail.getText(), MDPAleatoire(), 2));
 					else
-						ligues.get(indiceLigue).addEmploye(jtNom.getText(), jtPrenom.getText(), jtMail.getText(), newMDP());
+						ligue.addEmploye(jtNom.getText(), jtPrenom.getText(), jtMail.getText(), MDPAleatoire(), 3);
 					
 					// ENVOIE MAIL DES INFOS
 					
-					changeMode(GERER_LIGUE);
-				} else
-					erreurNOK("Ajout raté !");
+					changeMode(Mode.GERER_LIGUE, getIdUse());
+				} else if (test >= 1000)
+					erreurNOK("Mail déjà existant !");
+				else
+				erreurNOK("Ajout raté !");
+			}
+		};
+	}
+	
+	private ActionListener getExport(final Categorie categorie) {
+		return new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				try 
+				{
+					String chemin = "";
+					if (categorie == Categorie.LIGUE)
+						chemin = "listeLigues.csv";
+					else if (categorie == Categorie.EMPLOYE)
+						chemin = "listeEmployes_ligue" + getIdUse() + ".csv";
+					
+					File fichier = new File(chemin);
+					fichier.createNewFile();
+					
+					FileWriter ecrire =new FileWriter(fichier);
+					String ligne = "", admin = "";
+					
+					for (String titre : ligneTitre)
+						ligne += titre + ",";
+					
+					ligne = ligne.substring(0, ligne.length() - 1);
+					
+					ecrire.write(ligne);
+					ecrire.write("\n");
+					
+					int idAdmin = BDDLigue.getLigue(getIdUse()).getAdministrateur().getId();
+					
+					for (int i = 0; i < jtTableau.getRowCount(); i++) {
+						ligne = "";
+						for (int j = 0; j < jtTableau.getColumnCount(); j++) {
+							if (Integer.parseInt((String) jtTableau.getValueAt(i, 0)) != idAdmin) {
+								if (j != 0)
+									ligne += ",";
+								ligne += jtTableau.getValueAt(i, j);
+							} else {
+								if (j != 0)
+									admin += ",";
+								admin += jtTableau.getValueAt(i, j);
+							}
+						}
+						if (!ligne.equals(""))
+							ecrire.write(ligne + "\n");
+					}
+					
+					if (categorie == Categorie.EMPLOYE) {
+						ecrire.write("\nAdministrateur\n");
+						ecrire.write(admin);
+					}
+
+					ecrire.close();
+				} 
+				catch (IOException e) { e.printStackTrace(); }
 			}
 		};
 	}
@@ -1077,5 +1231,4 @@ public class ApplicationBureau extends JFrame {
 	public static void main(String[] args) {
 		new ApplicationBureau(GestionPersonnel.getGestionPersonnel());
 	}
-
 }
